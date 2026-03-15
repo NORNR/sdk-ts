@@ -3,8 +3,24 @@
 Teknisk not:
 SDK-klassen heter fortfarande `AgentPayClient` tills vidare for bakatkompatibilitet.
 
+Tre-raders quickstart:
+
 ```ts
-import { AgentPayClient } from "./index.js";
+import { Wallet } from "./index.js";
+
+const wallet = await Wallet.create({ owner: "research-agent", dailyLimit: 100, baseUrl: "https://nornr.com" });
+const decision = await wallet.pay({ amount: 5, to: "openai", purpose: "model inference" });
+```
+
+Om beslutet koas for manuell review kan samma facade fortsaetta floedet:
+
+```ts
+await wallet.approveIfNeeded(decision);
+await wallet.settle();
+```
+
+```ts
+import { AgentPayClient, Wallet } from "./index.js";
 
 const publicClient = new AgentPayClient({
   baseUrl: "http://127.0.0.1:3000"

@@ -272,15 +272,17 @@ export class AgentPayClient {
     return this.#request("/api/reconciliation");
   }
 
-  async approveIntent(approvalId) {
+  async approveIntent(approvalId, input = {}) {
     return this.#request(`/api/approvals/${approvalId}/approve`, {
       method: "POST",
+      body: input,
     });
   }
 
-  async rejectIntent(approvalId) {
+  async rejectIntent(approvalId, input = {}) {
     return this.#request(`/api/approvals/${approvalId}/reject`, {
       method: "POST",
+      body: input,
     });
   }
 
@@ -354,5 +356,147 @@ export class AgentPayClient {
     }
 
     return data;
+  }
+}
+
+function looksLikeEvmAddress(value) {
+  return typeof value === "string" && value.startsWith("0x") && value.length === 42;
+}
+
+function firstAgent(bootstrap) {
+  if (!bootstrap?.agents?.length) {
+    throw new Error("Wallet bootstrap did not return any agents");
+  }
+  return bootstrap.agents[0];
+}
+
+function findPendingApproval(bootstrap, paymentIntentId) {
+  return bootstrap?.approvals?.find((item) => item.paymentIntentId === paymentIntentId) ?? null;
+}
+
+export class Wallet {
+  constructor({ client, workspace, agent, wallet, apiKey, policy = null }) {
+    this.client = client;
+    this.workspace = workspace;
+    this.agent = agent;
+    this.wallet = wallet ?? null;
+    this.apiKey = apiKey ?? null;
+    this.policy = policy;
+  }
+
+  static async create({
+    owner,
+    dailyLimit = 100,
+    baseUrl = "http://127.0.0.1:3000",
+    workspaceName,
+    requireApprovalAbove,
+    maxTransaction,
+    whitelist,
+    autoPauseOnAnomaly = false,
+    reviewOnAnomaly = false,
+    startingBalance = 100,
+  }) {
+    const publicClient = new AgentPayClient({ baseUrl });
+    const onboarding = await publicClient.onboard({
+      workspaceName: workspaceName ?? `${owner} workspace`,
+      agentName: owner,
+      dailyLimitUsd: dailyLimit,
+      requireApprovalOverUsd: requireApprovalAbove,
+      maxTransactionUsd: maxTransaction,
+      counterpartyAllowlist: whitelist,
+      autoPauseOnAnomaly,
+      reviewOnAnomaly,
+      startingBalanceUsd: startingBalance,
+    });
+    return new Wallet({
+      client: publicClient.withApiKey(onboarding.apiKey.key),
+      workspace: onboarding.workspace,
+      agent: onboarding.agent,
+      wallet: onboarding.wallet,
+      apiKey: onboarding.apiKey,
+      policy: onboarding.policy ?? null,
+    });
+  }
+
+  static async connect({ apiKey, baseUrl = "http://127.0.0.1:3000", agentId }) {
+    const client = new AgentPayClient({ baseUrl, apiKey });
+    const bootstrap = await client.getBootstrap();
+    const agent = agentId
+      ? bootstrap.agents.find((item) => item.id === agentId) ?? firstAgent(bootstrap)
+      : firstAgent(bootstrap);
+    return new Wallet({
+      client,
+      workspace: bootstrap.workspace,
+      agent,
+      wallet: bootstrap.wallet ?? null,
+      apiKey: { key: apiKey },
+    });
+  }
+
+  get agentId() {
+    return this.agent.id;
+  }
+
+  get workspaceId() {
+    return this.workspace.id;
+  }
+
+  async refresh() {
+    const bootstrap = await this.client.getBootstrap();
+    this.workspace = bootstrap.workspace;
+    this.agent = bootstrap.agents.find((item) => item.id === this.agentId) ?? firstAgent(bootstrap);
+    this.wallet = bootstrap.wallet ?? null;
+    return bootstrap;
+  }
+
+  async pay({ amount, to, purpose, counterparty, budgetTags }) {
+    const destination = looksLikeEvmAddress(to) ? to : null;
+    const resolvedCounterparty = counterparty ?? (destination ? "external" : to);
+    const result = await this.client.createPaymentIntent({
+      agentId: this.agentId,
+      amountUsd: amount,
+      counterparty: resolvedCounterparty,
+      destination,
+      budgetTags,
+      purpose: purpose ?? `agent payment to ${resolvedCounterparty}`,
+    });
+    const paymentIntent = result.paymentIntent ?? {};
+    if (paymentIntent.status === "queued") {
+      const bootstrap = await this.client.getBootstrap();
+      const approval = findPendingApproval(bootstrap, paymentIntent.id);
+      if (approval) {
+        result.approval = approval;
+      }
+      result.requiresApproval = Boolean(approval);
+    } else {
+      result.requiresApproval = false;
+    }
+    return result;
+  }
+
+  async approveIfNeeded(payment, { comment } = {}) {
+    if (payment?.approval?.id) {
+      return this.client.approveIntent(payment.approval.id, comment ? { comment } : undefined);
+    }
+    const paymentIntent = payment?.paymentIntent ?? {};
+    if (paymentIntent.status !== "queued") {
+      return payment;
+    }
+    const bootstrap = await this.client.getBootstrap();
+    const approval = findPendingApproval(bootstrap, paymentIntent.id);
+    if (!approval) {
+      throw new Error("No pending approval found for payment intent");
+    }
+    return this.client.approveIntent(approval.id, comment ? { comment } : undefined);
+  }
+
+  async balance() {
+    const walletState = await this.client.getWallet();
+    this.wallet = walletState;
+    return walletState;
+  }
+
+  async settle() {
+    return this.client.runSettlement();
   }
 }

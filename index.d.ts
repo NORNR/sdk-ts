@@ -51,6 +51,27 @@ export type IdentityInput = {
   verificationStatus?: string;
 };
 
+export type WalletCreateInput = {
+  owner: string;
+  dailyLimit?: number;
+  baseUrl?: string;
+  workspaceName?: string;
+  requireApprovalAbove?: number;
+  maxTransaction?: number;
+  whitelist?: string[];
+  autoPauseOnAnomaly?: boolean;
+  reviewOnAnomaly?: boolean;
+  startingBalance?: number;
+};
+
+export type WalletPayInput = {
+  amount: number;
+  to: string;
+  purpose?: string;
+  counterparty?: string;
+  budgetTags?: Record<string, string>;
+};
+
 export declare class AgentPayClient {
   constructor(input?: { baseUrl?: string; apiKey?: string | null });
   baseUrl: string;
@@ -104,8 +125,8 @@ export declare class AgentPayClient {
   listSettlementJobs(): Promise<any>;
   runSettlement(): Promise<any>;
   getReconciliation(): Promise<any>;
-  approveIntent(approvalId: string): Promise<any>;
-  rejectIntent(approvalId: string): Promise<any>;
+  approveIntent(approvalId: string, input?: Record<string, unknown>): Promise<any>;
+  rejectIntent(approvalId: string, input?: Record<string, unknown>): Promise<any>;
   listLedger(agentId: string): Promise<any>;
   listReceipts(agentId: string): Promise<any>;
   attachReceiptEvidence(receiptId: string, input: Record<string, unknown>): Promise<any>;
@@ -113,4 +134,30 @@ export declare class AgentPayClient {
   createApiKey(input: string | { label: string; templateId?: string; scopes?: string[] }): Promise<any>;
   revokeApiKey(apiKeyId: string, input?: Record<string, unknown>): Promise<any>;
   rotateApiKey(apiKeyId: string, input?: Record<string, unknown>): Promise<any>;
+}
+
+export declare class Wallet {
+  constructor(input: {
+    client: AgentPayClient;
+    workspace: Record<string, unknown>;
+    agent: Record<string, unknown>;
+    wallet?: Record<string, unknown> | null;
+    apiKey?: Record<string, unknown> | null;
+    policy?: Record<string, unknown> | null;
+  });
+  client: AgentPayClient;
+  workspace: Record<string, unknown>;
+  agent: Record<string, unknown>;
+  wallet: Record<string, unknown> | null;
+  apiKey: Record<string, unknown> | null;
+  policy: Record<string, unknown> | null;
+  static create(input: WalletCreateInput): Promise<Wallet>;
+  static connect(input: { apiKey: string; baseUrl?: string; agentId?: string }): Promise<Wallet>;
+  get agentId(): string;
+  get workspaceId(): string;
+  refresh(): Promise<any>;
+  pay(input: WalletPayInput): Promise<any>;
+  approveIfNeeded(payment: Record<string, unknown>, input?: { comment?: string }): Promise<any>;
+  balance(): Promise<any>;
+  settle(): Promise<any>;
 }
