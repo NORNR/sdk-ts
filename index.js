@@ -37,6 +37,50 @@ export class AgentPayClient {
     });
   }
 
+  async listPolicyTemplates() {
+    return this.#request("/api/policy-templates");
+  }
+
+  async listApiKeyTemplates() {
+    return this.#request("/api/api-key-templates");
+  }
+
+  async listBudgetCaps() {
+    return this.#request("/api/budget-caps");
+  }
+
+  async createBudgetCap(input) {
+    return this.#request("/api/budget-caps", {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  async simulatePolicy(input) {
+    return this.#request("/api/policies/simulate", {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  async diffPolicy(input) {
+    return this.#request("/api/policies/diff", {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  async listAnomalies() {
+    return this.#request("/api/anomalies");
+  }
+
+  async updateAnomaly(anomalyId, input) {
+    return this.#request(`/api/anomalies/${anomalyId}`, {
+      method: "POST",
+      body: input,
+    });
+  }
+
   async createPaymentIntent(input) {
     return this.#request("/api/payments/intents", {
       method: "POST",
@@ -123,8 +167,39 @@ export class AgentPayClient {
     });
   }
 
+  async testWebhook(endpointId, input = { drainNow: true }) {
+    return this.#request(`/api/webhooks/${endpointId}/test`, {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  async replayWebhook(endpointId, input) {
+    return this.#request(`/api/webhooks/${endpointId}/replay`, {
+      method: "POST",
+      body: input,
+    });
+  }
+
   async exportAudit() {
     return this.#request("/api/audit/export");
+  }
+
+  async getCostReport({ format = "json" } = {}) {
+    return this.#request(`/api/reporting/costs?format=${encodeURIComponent(format)}`, {
+      parseAs: format === "json" ? "json" : "text",
+    });
+  }
+
+  async exportCostReport(format = "csv") {
+    return this.#request(`/api/reporting/costs?format=${encodeURIComponent(format)}`, {
+      parseAs: format === "json" ? "json" : "text",
+    });
+  }
+
+  async getMonthlyStatement(month) {
+    const query = month ? `?month=${encodeURIComponent(month)}` : "";
+    return this.#request(`/api/statements/monthly${query}`);
   }
 
   async listAgreements() {
@@ -217,14 +292,40 @@ export class AgentPayClient {
     return this.#request(`/api/agents/${agentId}/receipts`);
   }
 
-  async createApiKey(label) {
-    return this.#request("/api/api-keys", {
+  async attachReceiptEvidence(receiptId, input) {
+    return this.#request(`/api/receipts/${receiptId}/evidence`, {
       method: "POST",
-      body: { label },
+      body: input,
     });
   }
 
-  async #request(pathname, { method = "GET", body, authenticated = true } = {}) {
+  async createApiKey(input) {
+    const body = typeof input === "string" ? { label: input } : input;
+    return this.#request("/api/api-keys", {
+      method: "POST",
+      body,
+    });
+  }
+
+  async listApiKeys() {
+    return this.#request("/api/api-keys");
+  }
+
+  async revokeApiKey(apiKeyId, input = {}) {
+    return this.#request(`/api/api-keys/${apiKeyId}/revoke`, {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  async rotateApiKey(apiKeyId, input = {}) {
+    return this.#request(`/api/api-keys/${apiKeyId}/rotate`, {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  async #request(pathname, { method = "GET", body, authenticated = true, parseAs = "json" } = {}) {
     const headers = {};
 
     if (body !== undefined) {
@@ -245,10 +346,10 @@ export class AgentPayClient {
     });
 
     const text = await response.text();
-    const data = text ? JSON.parse(text) : null;
+    const data = parseAs === "json" ? (text ? JSON.parse(text) : null) : text;
 
     if (!response.ok) {
-      const message = data?.message ?? `Request failed with status ${response.status}`;
+      const message = parseAs === "json" ? data?.message ?? `Request failed with status ${response.status}` : `Request failed with status ${response.status}`;
       throw new Error(message);
     }
 

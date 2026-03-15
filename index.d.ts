@@ -5,7 +5,10 @@ export type OnboardingInput = {
   requireApprovalOverUsd?: number;
   maxTransactionUsd?: number;
   counterpartyAllowlist?: string[];
+  autoPauseOnAnomaly?: boolean;
   apiKeyLabel?: string;
+  apiKeyTemplateId?: string;
+  apiKeyScopes?: string[];
 };
 
 export type PaymentIntentInput = {
@@ -13,6 +16,7 @@ export type PaymentIntentInput = {
   amountUsd: number;
   counterparty: string;
   destination?: string;
+  budgetTags?: Record<string, string>;
   purpose?: string;
 };
 
@@ -25,6 +29,7 @@ export type DepositInput = {
 export type PayoutInput = {
   amountUsd: number;
   destination: string;
+  budgetTags?: Record<string, string>;
   memo?: string;
 };
 
@@ -34,6 +39,7 @@ export type AgreementInput = {
   description?: string;
   counterpartyName: string;
   counterpartyDestination: string;
+  budgetTags?: Record<string, string>;
   milestones: Array<{ title: string; description?: string; amountUsd: number }>;
 };
 
@@ -54,6 +60,14 @@ export declare class AgentPayClient {
   getBootstrap(): Promise<any>;
   createAgent(input: { name: string; dailyLimitUsd?: number }): Promise<any>;
   createPolicy(agentId: string, input: Record<string, unknown>): Promise<any>;
+  listPolicyTemplates(): Promise<any>;
+  listApiKeyTemplates(): Promise<any>;
+  listBudgetCaps(): Promise<any>;
+  createBudgetCap(input: Record<string, unknown>): Promise<any>;
+  simulatePolicy(input: Record<string, unknown>): Promise<any>;
+  diffPolicy(input: Record<string, unknown>): Promise<any>;
+  listAnomalies(): Promise<any>;
+  updateAnomaly(anomalyId: string, input: Record<string, unknown>): Promise<any>;
   createPaymentIntent(input: PaymentIntentInput): Promise<any>;
   getIdentity(): Promise<any>;
   updateIdentity(input: IdentityInput): Promise<any>;
@@ -72,7 +86,12 @@ export declare class AgentPayClient {
   createWebhook(input: Record<string, unknown>): Promise<any>;
   listWebhookDeliveries(): Promise<any>;
   drainWebhooks(): Promise<any>;
+  testWebhook(endpointId: string, input?: Record<string, unknown>): Promise<any>;
+  replayWebhook(endpointId: string, input: Record<string, unknown>): Promise<any>;
   exportAudit(): Promise<any>;
+  getCostReport(input?: { format?: "json" | "csv" }): Promise<any>;
+  exportCostReport(format?: "json" | "csv"): Promise<any>;
+  getMonthlyStatement(month?: string): Promise<any>;
   listAgreements(): Promise<any>;
   createAgreement(input: AgreementInput): Promise<any>;
   submitMilestoneProof(agreementId: string, milestoneId: string, input: Record<string, unknown>): Promise<any>;
@@ -89,5 +108,9 @@ export declare class AgentPayClient {
   rejectIntent(approvalId: string): Promise<any>;
   listLedger(agentId: string): Promise<any>;
   listReceipts(agentId: string): Promise<any>;
-  createApiKey(label: string): Promise<any>;
+  attachReceiptEvidence(receiptId: string, input: Record<string, unknown>): Promise<any>;
+  listApiKeys(): Promise<any>;
+  createApiKey(input: string | { label: string; templateId?: string; scopes?: string[] }): Promise<any>;
+  revokeApiKey(apiKeyId: string, input?: Record<string, unknown>): Promise<any>;
+  rotateApiKey(apiKeyId: string, input?: Record<string, unknown>): Promise<any>;
 }
