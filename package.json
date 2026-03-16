@@ -1,0 +1,20 @@
+{
+  "name": "@nornr/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for NORNR",
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "README.md"
+  ],
+  "license": "MIT"
+}

@@ -5,8 +5,14 @@ SDK-klassen heter fortfarande `AgentPayClient` tills vidare for bakatkompatibili
 
 Tre-raders quickstart:
 
+Install:
+
+```bash
+npm install @nornr/sdk
+```
+
 ```ts
-import { Wallet } from "./index.js";
+import { Wallet } from "@nornr/sdk";
 
 const wallet = await Wallet.create({ owner: "research-agent", dailyLimit: 100, baseUrl: "https://nornr.com" });
 const decision = await wallet.pay({ amount: 5, to: "openai", purpose: "model inference" });
@@ -20,7 +26,7 @@ await wallet.settle();
 ```
 
 ```ts
-import { AgentPayClient, Wallet } from "./index.js";
+import { AgentPayClient, Wallet } from "@nornr/sdk";
 
 const publicClient = new AgentPayClient({
   baseUrl: "http://127.0.0.1:3000"
