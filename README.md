@@ -1,145 +1,105 @@
-# NORNR TypeScript SDK
+# @nornr/sdk
 
-Teknisk not:
-SDK-klassen heter fortfarande `AgentPayClient` tills vidare for bakatkompatibilitet.
+TypeScript SDK for [NORNR](https://nornr.com) — spend governance for AI agents.
 
-Tre-raders quickstart:
+NORNR sits between agent intent and real settlement. Policy decides approved / queued / blocked. Every decision leaves a signed audit trail.
 
-Install from this repo today:
+---
 
-```bash
-npm install ./packages/sdk-ts
-```
-
-When the package is published publicly, the install command will be:
+## Install
 
 ```bash
 npm install @nornr/sdk
 ```
 
+---
+
+## Quickstart
+
 ```ts
 import { Wallet } from "@nornr/sdk";
 
-const wallet = await Wallet.create({ owner: "research-agent", dailyLimit: 100, baseUrl: "https://nornr.com" });
-const decision = await wallet.pay({ amount: 5, to: "openai", purpose: "model inference" });
+const wallet = await Wallet.create({
+  owner: "research-agent",
+  dailyLimit: 100,
+  requireApprovalAbove: 25,
+  baseUrl: "https://nornr.com",
+});
+
+const decision = await wallet.pay({
+  amount: 12.50,
+  to: "openai",
+  purpose: "model inference",
+});
+
+if (decision.requiresApproval) {
+  await wallet.approveIfNeeded(decision);
+}
 ```
 
-Om beslutet koas for manuell review kan samma facade fortsaetta floedet:
+---
+
+## Connect an existing workspace
 
 ```ts
-await wallet.approveIfNeeded(decision);
-await wallet.settle();
+const wallet = await Wallet.connect({
+  apiKey: process.env.NORNR_API_KEY,
+  agentId: "agent_abc123",
+});
 ```
+
+---
+
+## Works with your agent framework
 
 ```ts
-import { AgentPayClient, Wallet } from "@nornr/sdk";
+// OpenAI Agents SDK
+import { createOpenAIAgentsTools } from "@nornr/sdk";
+const tools = createOpenAIAgentsTools(wallet);
 
-const publicClient = new AgentPayClient({
-  baseUrl: "http://127.0.0.1:3000"
-});
-
-const onboarding = await publicClient.onboard({
-  workspaceName: "Atlas Agents",
-  agentName: "research-agent",
-  dailyLimitUsd: 50
-});
-
-const client = publicClient.withApiKey(onboarding.apiKey.key);
-
-const bootstrap = await client.getBootstrap();
-const policyTemplates = await client.listPolicyTemplates();
-const apiKeyTemplates = await client.listApiKeyTemplates();
-const caps = await client.listBudgetCaps();
-
-await client.updateIdentity({
-  legalName: "Atlas Agents AB",
-  contactEmail: "owner@atlasagents.ai",
-  jurisdiction: "SE"
-});
-
-await client.createDeposit({
-  amountUsd: 25,
-  source: "bank-transfer"
-});
-
-await client.createPaymentIntent({
-  agentId: bootstrap.agents[0].id,
-  amountUsd: 5,
-  counterparty: "openai",
-  destination: "0x1111111111111111111111111111111111111111",
-  budgetTags: {
-    team: "growth",
-    project: "agent-wallet-rollout",
-    customer: "atlas-enterprise",
-    costCenter: "ai-rnd"
-  },
-  purpose: "model inference"
-});
-
-const agreement = await client.createAgreement({
-  buyerAgentId: bootstrap.agents[0].id,
-  title: "Dataset scrape engagement",
-  counterpartyName: "scraper-agent",
-  counterpartyDestination: "agent-b-wallet",
-  milestones: [
-    { title: "Collect URLs", amountUsd: 12 },
-    { title: "Normalize output", amountUsd: 8 }
-  ]
-});
-
-await client.submitMilestoneProof(
-  agreement.agreement.id,
-  agreement.agreement.milestones[0].id,
-  { summary: "Output bundle uploaded" }
-);
-
-await client.releaseMilestone(
-  agreement.agreement.id,
-  agreement.agreement.milestones[0].id
-);
-
-await client.runSettlement();
-
-const reputation = await client.getReputation();
-const portableReputation = await client.getPortableReputation();
-const signedPortableReputation = await client.getSignedPortableReputation();
-const directory = await client.getEcosystemDirectory();
-const agreementStandard = await client.exportAgreementStandard();
-const signedAgreementStandard = await client.exportSignedAgreementStandard();
-const signedDirectory = await client.getSignedEcosystemDirectory();
-const validation = await client.validateInteropEnvelope(signedPortableReputation);
-await client.createWebhook({
-  label: "slack-approvals",
-  url: "simulate://slack-approvals",
-  deliveryMode: "slack",
-  publicBaseUrl: "http://127.0.0.1:3000",
-  events: ["approval.created"]
-});
-const events = await client.listEvents();
-const deliveries = await client.listWebhookDeliveries();
-const auditExport = await client.exportAudit();
-const costReport = await client.getCostReport();
-const costReportCsv = await client.exportCostReport("csv");
-const scopedKey = await client.createApiKey({
-  label: "observer-key",
-  templateId: "observer"
-});
-const rotatedKey = await client.rotateApiKey(scopedKey.id);
-await client.createBudgetCap({
-  dimension: "team",
-  value: "growth",
-  limitUsd: 100,
-  action: "queue"
-});
-const simulation = await client.simulatePolicy({
-  agentId: bootstrap.agents[0].id,
-  templateId: "production_guarded"
-});
-const policyDiff = await client.diffPolicy({
-  agentId: bootstrap.agents[0].id,
-  templateId: "production_guarded",
-  mode: "shadow"
-});
-const anomalies = await client.listAnomalies();
-const statement = await client.getMonthlyStatement();
+// LangChain
+import { createLangChainTools } from "@nornr/sdk";
+const tools = createLangChainTools(wallet);
 ```
+
+---
+
+## Full client
+
+```ts
+import { AgentPayClient } from "@nornr/sdk";
+
+const client = new AgentPayClient({ baseUrl: "https://nornr.com" })
+  .withApiKey(process.env.NORNR_API_KEY);
+
+// Intents
+await client.createPaymentIntent({ agentId, amountUsd, counterparty, purpose });
+
+// Approvals
+await client.listApprovals();
+
+// Budget controls
+await client.createBudgetCap({ dimension: "team", value: "growth", limitUsd: 500, action: "queue" });
+
+// Audit
+await client.exportAudit();
+await client.getCostReport();
+await client.getMonthlyStatement();
+
+// Anomalies
+await client.listAnomalies();
+```
+
+---
+
+## Links
+
+- [nornr.com](https://nornr.com)
+- [Control room](https://nornr.com/app)
+- [Python SDK](https://github.com/NORNR/sdk-py)
+
+---
+
+## License
+
+MIT
