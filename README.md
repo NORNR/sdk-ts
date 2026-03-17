@@ -2,7 +2,7 @@
 
 TypeScript SDK for [NORNR](https://nornr.com) — spend governance for AI agents.
 
-NORNR sits between agent intent and real settlement. Policy decides approved / queued / blocked. Every decision leaves a signed audit trail.
+NORNR gives your agents a mandate before they spend. Policy decides approved / queued / blocked. Every decision gets a signed receipt. Your agent acts on the decision using its own payment rails.
 
 ---
 
@@ -11,6 +11,25 @@ NORNR sits between agent intent and real settlement. Policy decides approved / q
 ```bash
 npm install @nornr/sdk
 ```
+
+---
+
+## How it works
+
+```
+agent calls wallet.pay()
+        ↓
+NORNR evaluates against policy
+        ↓
+decision: approved / queued / blocked
+        ↓
+agent acts on the decision
+using its own API keys and payment methods
+        ↓
+signed receipt + audit trail recorded
+```
+
+NORNR does not move money. It governs whether money should move, records that it did, and proves it afterward.
 
 ---
 
@@ -32,8 +51,15 @@ const decision = await wallet.pay({
   purpose: "model inference",
 });
 
-if (decision.requiresApproval) {
+if (decision.status === "approved") {
+  // Mandate granted — proceed with your actual API call
+  await openai.chat.completions.create({ model: "gpt-4o", messages });
+} else if (decision.requiresApproval) {
+  // Above threshold — queued for human approval
   await wallet.approveIfNeeded(decision);
+} else {
+  // Blocked by policy
+  console.log("Spend blocked:", decision.reasons);
 }
 ```
 
@@ -89,6 +115,15 @@ await client.getMonthlyStatement();
 // Anomalies
 await client.listAnomalies();
 ```
+
+---
+
+## On-chain settlement (optional)
+
+NORNR supports optional on-chain USDC settlement via Base for teams that want
+cryptographic proof of transfer in addition to the signed audit trail.
+This is not required for governance to work — most teams use NORNR with
+their existing payment infrastructure.
 
 ---
 
