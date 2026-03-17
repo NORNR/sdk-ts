@@ -5,7 +5,13 @@ SDK-klassen heter fortfarande `AgentPayClient` tills vidare for bakatkompatibili
 
 Tre-raders quickstart:
 
-Install:
+Install from this repo today:
+
+```bash
+npm install ./packages/sdk-ts
+```
+
+When the package is published publicly, the install command will be:
 
 ```bash
 npm install @nornr/sdk
