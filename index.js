@@ -1,3 +1,5 @@
+import { normalizeBootstrapPayload } from "../bootstrap-contract/index.js";
+
 export class AgentPayClient {
   constructor({ baseUrl = "http://127.0.0.1:3000", apiKey } = {}) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
@@ -20,7 +22,7 @@ export class AgentPayClient {
   }
 
   async getBootstrap() {
-    return this.#request("/api/bootstrap");
+    return normalizeBootstrapPayload(await this.#request("/api/bootstrap"));
   }
 
   async createAgent(input) {
@@ -39,6 +41,35 @@ export class AgentPayClient {
 
   async listPolicyTemplates() {
     return this.#request("/api/policy-templates");
+  }
+
+  async listPolicyPacks() {
+    return this.#request("/api/policy-packs");
+  }
+
+  async getPolicyPack(packId) {
+    return this.#request(`/api/policy-packs/${encodeURIComponent(packId)}`);
+  }
+
+  async replayPolicyPack(packId, input) {
+    return this.#request(`/api/policy-packs/${encodeURIComponent(packId)}/replay`, {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  async applyPolicyPack(packId, input) {
+    return this.#request(`/api/policy-packs/${encodeURIComponent(packId)}/apply`, {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  async rollbackPolicyPack(packId, input = {}) {
+    return this.#request(`/api/policy-packs/${encodeURIComponent(packId)}/rollback`, {
+      method: "POST",
+      body: input,
+    });
   }
 
   async listApiKeyTemplates() {
@@ -107,6 +138,36 @@ export class AgentPayClient {
     return this.#request("/api/reputation");
   }
 
+  async getTrustProfile() {
+    return this.#request("/api/trust/profile");
+  }
+
+  async getTrustTiers() {
+    return this.#request("/api/trust/tiers");
+  }
+
+  async getTrustManifest() {
+    return this.#request("/api/trust/manifest");
+  }
+
+  async getSignedTrustManifest() {
+    return this.#request("/api/trust/manifest/signed");
+  }
+
+  async verifyTrustManifest(input) {
+    return this.#request("/api/trust/verify", {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  async handshakeTrustManifest(input) {
+    return this.#request("/api/trust/handshake", {
+      method: "POST",
+      body: input,
+    });
+  }
+
   async getPortableReputation() {
     return this.#request("/api/reputation/portable");
   }
@@ -157,6 +218,18 @@ export class AgentPayClient {
     });
   }
 
+  async listWorkspaceAccessLinks() {
+    const payload = await this.#request("/api/workspace/access-links");
+    return payload?.items ?? payload ?? [];
+  }
+
+  async createWorkspaceAccessLink(input) {
+    return this.#request("/api/workspace/access-links", {
+      method: "POST",
+      body: input,
+    });
+  }
+
   async listWebhookDeliveries() {
     return this.#request("/api/webhooks/deliveries");
   }
@@ -185,6 +258,12 @@ export class AgentPayClient {
     return this.#request("/api/audit/export");
   }
 
+  async getAuditReview({ format = "json" } = {}) {
+    return this.#request(`/api/audit/review?format=${encodeURIComponent(format)}`, {
+      parseAs: format === "json" ? "json" : "text",
+    });
+  }
+
   async getCostReport({ format = "json" } = {}) {
     return this.#request(`/api/reporting/costs?format=${encodeURIComponent(format)}`, {
       parseAs: format === "json" ? "json" : "text",
@@ -200,6 +279,132 @@ export class AgentPayClient {
   async getMonthlyStatement(month) {
     const query = month ? `?month=${encodeURIComponent(month)}` : "";
     return this.#request(`/api/statements/monthly${query}`);
+  }
+
+  async getCloseBundle(month, { format = "json" } = {}) {
+    const parts = [];
+    if (month) {
+      parts.push(`month=${encodeURIComponent(month)}`);
+    }
+    if (format && format !== "json") {
+      parts.push(`format=${encodeURIComponent(format)}`);
+    }
+    const query = parts.length ? `?${parts.join("&")}` : "";
+    return this.#request(`/api/statements/monthly/close-bundle${query}`, {
+      parseAs: format === "json" ? "json" : "text",
+    });
+  }
+
+  async getArtifactEvidence(month) {
+    const query = month ? `?month=${encodeURIComponent(month)}` : "";
+    return this.#request(`/api/statements/monthly/evidence${query}`);
+  }
+
+  async compareCloseBundles({ left, right }) {
+    return this.#request(`/api/statements/monthly/compare?left=${encodeURIComponent(left)}&right=${encodeURIComponent(right)}`);
+  }
+
+  async verifyCloseBundleManifest(input) {
+    return this.#request("/api/statements/monthly/manifest/verify", {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  async getSignedCloseBundleManifest(month) {
+    const query = month ? `?month=${encodeURIComponent(month)}` : "";
+    return this.#request(`/api/statements/monthly/manifest/signed${query}`);
+  }
+
+  async listCounterpartyProfiles() {
+    const payload = await this.#request("/api/counterparties/profiles");
+    return payload?.items ?? payload ?? [];
+  }
+
+  async getCounterpartyProfile(profileId) {
+    const payload = await this.#request(`/api/counterparties/profiles/${encodeURIComponent(profileId)}`);
+    return payload?.profile ?? payload ?? {};
+  }
+
+  async listPolicyAuthoringDrafts({ includeArchived = false } = {}) {
+    const query = includeArchived ? "?includeArchived=1" : "";
+    return this.#request(`/api/policies/authoring-drafts${query}`);
+  }
+
+  async getPolicyAuthoringDraft(draftId) {
+    const payload = await this.#request(`/api/policies/authoring-drafts/${encodeURIComponent(draftId)}`);
+    return payload?.draft ?? payload ?? {};
+  }
+
+  async replayPolicyAuthoringDraft(draftId) {
+    return this.#request(`/api/policies/authoring-drafts/${encodeURIComponent(draftId)}/replay`, {
+      method: "POST",
+    });
+  }
+
+  async duplicatePolicyAuthoringDraft(draftId) {
+    return this.#request(`/api/policies/authoring-drafts/${encodeURIComponent(draftId)}/duplicate`, {
+      method: "POST",
+    });
+  }
+
+  async publishPolicyAuthoringDraft(draftId, input = {}) {
+    return this.#request(`/api/policies/authoring-drafts/${encodeURIComponent(draftId)}/publish`, {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  async listKillSwitches() {
+    const payload = await this.#request("/api/compliance/kill-switches");
+    return payload?.items ?? payload ?? [];
+  }
+
+  async saveKillSwitch(input) {
+    return this.#request("/api/compliance/kill-switches", {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  async listApprovalChains() {
+    const payload = await this.#request("/api/compliance/approval-chains");
+    return payload?.items ?? payload ?? [];
+  }
+
+  async saveApprovalChain(input) {
+    return this.#request("/api/compliance/approval-chains", {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  async listHardwareBindings() {
+    const payload = await this.#request("/api/compliance/hardware-bindings");
+    return payload?.items ?? payload ?? [];
+  }
+
+  async saveHardwareBinding(input) {
+    return this.#request("/api/compliance/hardware-bindings", {
+      method: "POST",
+      body: input,
+    });
+  }
+
+  async getIntentTimeline() {
+    return this.#request("/api/workspace/intent-timeline");
+  }
+
+  async getWeeklyReview() {
+    return this.#request("/api/workspace/weekly-review");
+  }
+
+  async getPolicyWorkbench() {
+    return this.#request("/api/policy-workbench");
+  }
+
+  async getWeeklyExpenseReport() {
+    return this.#request("/api/workspace/expense-report");
   }
 
   async listAgreements() {
@@ -277,6 +482,11 @@ export class AgentPayClient {
       method: "POST",
       body: input,
     });
+  }
+
+  async listApprovals() {
+    const payload = await this.#request("/api/approvals?status=all");
+    return payload?.items ?? payload ?? [];
   }
 
   async rejectIntent(approvalId, input = {}) {
@@ -449,7 +659,7 @@ export class Wallet {
     return bootstrap;
   }
 
-  async pay({ amount, to, purpose, counterparty, budgetTags }) {
+  async pay({ amount, to, purpose, counterparty, budgetTags, dryRun = false, businessContext }) {
     const destination = looksLikeEvmAddress(to) ? to : null;
     const resolvedCounterparty = counterparty ?? (destination ? "external" : to);
     const result = await this.client.createPaymentIntent({
@@ -459,6 +669,8 @@ export class Wallet {
       destination,
       budgetTags,
       purpose: purpose ?? `agent payment to ${resolvedCounterparty}`,
+      dryRun,
+      businessContext,
     });
     const paymentIntent = result.paymentIntent ?? {};
     if (paymentIntent.status === "queued") {
@@ -490,6 +702,15 @@ export class Wallet {
     return this.client.approveIntent(approval.id, comment ? { comment } : undefined);
   }
 
+  async pendingApprovals() {
+    const bootstrap = await this.client.getBootstrap();
+    return (bootstrap?.approvals ?? []).filter((item) => item?.status === "pending");
+  }
+
+  async reject(approvalId, { comment } = {}) {
+    return this.client.rejectIntent(approvalId, comment ? { comment } : undefined);
+  }
+
   async balance() {
     const walletState = await this.client.getWallet();
     this.wallet = walletState;
@@ -498,5 +719,102 @@ export class Wallet {
 
   async settle() {
     return this.client.runSettlement();
+  }
+
+  async simulatePolicy({ templateId, rolloutMode = "shadow" }) {
+    return this.client.simulatePolicy({
+      agentId: this.agentId,
+      templateId,
+      rolloutMode,
+    });
+  }
+
+  async listPolicyPacks() {
+    return this.client.listPolicyPacks();
+  }
+
+  async getPolicyPack(packId) {
+    return this.client.getPolicyPack(packId);
+  }
+
+  async replayPolicyPack(packId, { mode = "shadow" } = {}) {
+    return this.client.replayPolicyPack(packId, {
+      agentId: this.agentId,
+      mode,
+    });
+  }
+
+  async applyPolicyPack(packId, { mode = "shadow" } = {}) {
+    return this.client.applyPolicyPack(packId, {
+      agentId: this.agentId,
+      mode,
+    });
+  }
+
+  async rollbackPolicyPack(packId) {
+    return this.client.rollbackPolicyPack(packId, {
+      agentId: this.agentId,
+    });
+  }
+
+  async listPolicyAuthoringDrafts({ includeArchived = false } = {}) {
+    return this.client.listPolicyAuthoringDrafts({ includeArchived });
+  }
+
+  async getPolicyAuthoringDraft(draftId) {
+    return this.client.getPolicyAuthoringDraft(draftId);
+  }
+
+  async replayPolicyAuthoringDraft(draftId) {
+    return this.client.replayPolicyAuthoringDraft(draftId);
+  }
+
+  async duplicatePolicyAuthoringDraft(draftId) {
+    return this.client.duplicatePolicyAuthoringDraft(draftId);
+  }
+
+  async publishPolicyAuthoringDraft(draftId, input = {}) {
+    return this.client.publishPolicyAuthoringDraft(draftId, input);
+  }
+
+  async listCounterpartyProfiles() {
+    return this.client.listCounterpartyProfiles();
+  }
+
+  async getCounterpartyProfile(profileId) {
+    return this.client.getCounterpartyProfile(profileId);
+  }
+
+  async compareCloseBundles({ left, right }) {
+    return this.client.compareCloseBundles({ left, right });
+  }
+
+  async auditReview({ format = "json" } = {}) {
+    return this.client.getAuditReview({ format });
+  }
+
+  async financePacket() {
+    const review = await this.auditReview();
+    return review?.financePacket ?? null;
+  }
+
+  async timeline() {
+    return this.client.getIntentTimeline();
+  }
+
+  async weeklyReview() {
+    return this.client.getWeeklyReview();
+  }
+
+  async check({ intent, cost, counterparty, budgetTags, businessContext }) {
+    return this.pay({
+      amount: Number(cost),
+      to: counterparty,
+      counterparty,
+      purpose: intent,
+      budgetTags,
+      dryRun: true,
+      businessContext: businessContext ?? { reason: intent },
+    });
   }
 }

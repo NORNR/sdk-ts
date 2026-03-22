@@ -51,6 +51,12 @@ export type IdentityInput = {
   verificationStatus?: string;
 };
 
+export type TrustHandshakeInput = {
+  envelope: Record<string, unknown>;
+  minTier?: string;
+  minScore?: number;
+};
+
 export type WalletCreateInput = {
   owner: string;
   dailyLimit?: number;
@@ -70,6 +76,8 @@ export type WalletPayInput = {
   purpose?: string;
   counterparty?: string;
   budgetTags?: Record<string, string>;
+  dryRun?: boolean;
+  businessContext?: Record<string, unknown>;
 };
 
 export declare class AgentPayClient {
@@ -82,6 +90,11 @@ export declare class AgentPayClient {
   createAgent(input: { name: string; dailyLimitUsd?: number }): Promise<any>;
   createPolicy(agentId: string, input: Record<string, unknown>): Promise<any>;
   listPolicyTemplates(): Promise<any>;
+  listPolicyPacks(): Promise<any>;
+  getPolicyPack(packId: string): Promise<any>;
+  replayPolicyPack(packId: string, input: Record<string, unknown>): Promise<any>;
+  applyPolicyPack(packId: string, input: Record<string, unknown>): Promise<any>;
+  rollbackPolicyPack(packId: string, input?: Record<string, unknown>): Promise<any>;
   listApiKeyTemplates(): Promise<any>;
   listBudgetCaps(): Promise<any>;
   createBudgetCap(input: Record<string, unknown>): Promise<any>;
@@ -94,6 +107,12 @@ export declare class AgentPayClient {
   updateIdentity(input: IdentityInput): Promise<any>;
   getCompliance(): Promise<any>;
   getReputation(): Promise<any>;
+  getTrustProfile(): Promise<any>;
+  getTrustTiers(): Promise<any>;
+  getTrustManifest(): Promise<any>;
+  getSignedTrustManifest(): Promise<any>;
+  verifyTrustManifest(input: Record<string, unknown>): Promise<any>;
+  handshakeTrustManifest(input: TrustHandshakeInput): Promise<any>;
   getPortableReputation(): Promise<any>;
   getSignedPortableReputation(): Promise<any>;
   exportAgreementStandard(): Promise<any>;
@@ -105,14 +124,39 @@ export declare class AgentPayClient {
   listEvents(): Promise<any>;
   listWebhooks(): Promise<any>;
   createWebhook(input: Record<string, unknown>): Promise<any>;
+  listWorkspaceAccessLinks(): Promise<any>;
+  createWorkspaceAccessLink(input: Record<string, unknown>): Promise<any>;
   listWebhookDeliveries(): Promise<any>;
   drainWebhooks(): Promise<any>;
   testWebhook(endpointId: string, input?: Record<string, unknown>): Promise<any>;
   replayWebhook(endpointId: string, input: Record<string, unknown>): Promise<any>;
   exportAudit(): Promise<any>;
+  getAuditReview(input?: { format?: "json" | "markdown" }): Promise<any>;
   getCostReport(input?: { format?: "json" | "csv" }): Promise<any>;
   exportCostReport(format?: "json" | "csv"): Promise<any>;
   getMonthlyStatement(month?: string): Promise<any>;
+  getCloseBundle(month?: string, input?: { format?: "json" | "markdown" }): Promise<any>;
+  getArtifactEvidence(month?: string): Promise<any>;
+  compareCloseBundles(input: { left: string; right: string }): Promise<any>;
+  verifyCloseBundleManifest(input: Record<string, unknown>): Promise<any>;
+  getSignedCloseBundleManifest(month?: string): Promise<any>;
+  listCounterpartyProfiles(): Promise<any>;
+  getCounterpartyProfile(profileId: string): Promise<any>;
+  listPolicyAuthoringDrafts(input?: { includeArchived?: boolean }): Promise<any>;
+  getPolicyAuthoringDraft(draftId: string): Promise<any>;
+  replayPolicyAuthoringDraft(draftId: string): Promise<any>;
+  duplicatePolicyAuthoringDraft(draftId: string): Promise<any>;
+  publishPolicyAuthoringDraft(draftId: string, input?: Record<string, unknown>): Promise<any>;
+  listKillSwitches(): Promise<any>;
+  saveKillSwitch(input: Record<string, unknown>): Promise<any>;
+  listApprovalChains(): Promise<any>;
+  saveApprovalChain(input: Record<string, unknown>): Promise<any>;
+  listHardwareBindings(): Promise<any>;
+  saveHardwareBinding(input: Record<string, unknown>): Promise<any>;
+  getIntentTimeline(): Promise<any>;
+  getWeeklyReview(): Promise<any>;
+  getPolicyWorkbench(): Promise<any>;
+  getWeeklyExpenseReport(): Promise<any>;
   listAgreements(): Promise<any>;
   createAgreement(input: AgreementInput): Promise<any>;
   submitMilestoneProof(agreementId: string, milestoneId: string, input: Record<string, unknown>): Promise<any>;
@@ -126,6 +170,7 @@ export declare class AgentPayClient {
   runSettlement(): Promise<any>;
   getReconciliation(): Promise<any>;
   approveIntent(approvalId: string, input?: Record<string, unknown>): Promise<any>;
+  listApprovals(): Promise<any>;
   rejectIntent(approvalId: string, input?: Record<string, unknown>): Promise<any>;
   listLedger(agentId: string): Promise<any>;
   listReceipts(agentId: string): Promise<any>;
@@ -157,7 +202,34 @@ export declare class Wallet {
   get workspaceId(): string;
   refresh(): Promise<any>;
   pay(input: WalletPayInput): Promise<any>;
+  pendingApprovals(): Promise<any>;
   approveIfNeeded(payment: Record<string, unknown>, input?: { comment?: string }): Promise<any>;
+  reject(approvalId: string, input?: { comment?: string }): Promise<any>;
   balance(): Promise<any>;
   settle(): Promise<any>;
+  simulatePolicy(input: { templateId: string; rolloutMode?: string }): Promise<any>;
+  listPolicyPacks(): Promise<any>;
+  getPolicyPack(packId: string): Promise<any>;
+  replayPolicyPack(packId: string, input?: { mode?: string }): Promise<any>;
+  applyPolicyPack(packId: string, input?: { mode?: string }): Promise<any>;
+  rollbackPolicyPack(packId: string): Promise<any>;
+  listPolicyAuthoringDrafts(input?: { includeArchived?: boolean }): Promise<any>;
+  getPolicyAuthoringDraft(draftId: string): Promise<any>;
+  replayPolicyAuthoringDraft(draftId: string): Promise<any>;
+  duplicatePolicyAuthoringDraft(draftId: string): Promise<any>;
+  publishPolicyAuthoringDraft(draftId: string, input?: Record<string, unknown>): Promise<any>;
+  listCounterpartyProfiles(): Promise<any>;
+  getCounterpartyProfile(profileId: string): Promise<any>;
+  compareCloseBundles(input: { left: string; right: string }): Promise<any>;
+  auditReview(input?: { format?: "json" | "markdown" }): Promise<any>;
+  financePacket(): Promise<any>;
+  timeline(): Promise<any>;
+  weeklyReview(): Promise<any>;
+  check(input: {
+    intent: string;
+    cost: number;
+    counterparty: string;
+    budgetTags?: Record<string, string>;
+    businessContext?: Record<string, unknown>;
+  }): Promise<any>;
 }
